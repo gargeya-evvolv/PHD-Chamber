@@ -1,6 +1,6 @@
 # Labs
 
-
+# evvolv.ai Turn
 ## 1. Advanced Task Manager + AI Prioritization & Recommendation
 
 **Steps:**
@@ -61,7 +61,9 @@
 
 ***
 
-## 2. Smart Email Thread Analyzer & AI Action Suggestion
+# Participants' Turn
+
+## 1. Smart Email Thread Analyzer & AI Action Suggestion
 
 **Steps:**
 
@@ -106,7 +108,7 @@
 
 ***
 
-## 3. Deep Feedback Thematic & Sentiment Analyzer with AI Insight
+## 2. Deep Feedback Thematic & Sentiment Analyzer with AI Insight
 
 **Steps:**
 
