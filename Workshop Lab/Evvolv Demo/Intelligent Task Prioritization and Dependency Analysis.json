@@ -1,0 +1,130 @@
+{
+  "name": "Intelligent Task Prioritization and Dependency Analysis",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4b4a4229-2f2b-4158-b0d6-8b85cdccfe42",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "tasks",
+              "value": "[{\"Task\":\"Prepare compliance report\",\"Priority\":\"High\",\"Status\":\"Pending\",\"Tags\":[\"Compliance\",\"Finance\"],\"Dependencies\":[\"Get sales data\"]},{\"Task\":\"Schedule team meeting\",\"Priority\":\"Medium\",\"Status\":\"Done\",\"Tags\":[\"Management\"],\"Dependencies\":[]},{\"Task\":\"Review customer feedback\",\"Priority\":\"High\",\"Status\":\"In Progress\",\"Tags\":[\"Customer\",\"Insights\"],\"Dependencies\":[\"Get last week's feedback\"],\"EstimatedTime\":\"2h\"}]",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5fdb4be7-a026-48c3-99bf-646472b8404c",
+      "name": "Task List Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the tasks array from input\nconst tasks = $input.all().flatMap(item => item.json.tasks || []);\n\n// Create a map of task IDs to task objects for quick lookup\nconst taskMap = {};\ntasks.forEach(task => {\n  taskMap[task.TaskID] = task;\n});\n\n// Analyze dependencies and flag blocked tasks\nconst tasksWithBlockedFlag = tasks.map(task => {\n  let isBlocked = false;\n  \n  // Check if task has dependencies\n  if (task.Dependencies && task.Dependencies.length > 0) {\n    // Check if any dependency is not completed\n    isBlocked = task.Dependencies.some(depId => {\n      const depTask = taskMap[depId];\n      return depTask && depTask.Status !== 'Done';\n    });\n  }\n  \n  return {\n    ...task,\n    isBlocked: isBlocked\n  };\n});\n\n// Get list of blocked tasks\nconst blockedTasks = tasksWithBlockedFlag.filter(task => task.isBlocked);\n\n// Cluster tasks by tags\nconst tasksByTags = {};\ntasksWithBlockedFlag.forEach(task => {\n  if (task.Tags && task.Tags.length > 0) {\n    task.Tags.forEach(tag => {\n      if (!tasksByTags[tag]) {\n        tasksByTags[tag] = [];\n      }\n      tasksByTags[tag].push(task);\n    });\n  } else {\n    // Tasks without tags go into 'Untagged' category\n    if (!tasksByTags['Untagged']) {\n      tasksByTags['Untagged'] = [];\n    }\n    tasksByTags['Untagged'].push(task);\n  }\n});\n\n// Return structured output\nreturn [\n  {\n    json: {\n      tasks: tasksWithBlockedFlag,\n      blockedTasks: blockedTasks,\n      tasksByTags: tasksByTags,\n      summary: {\n        totalTasks: tasksWithBlockedFlag.length,\n        blockedCount: blockedTasks.length,\n        unblockedCount: tasksWithBlockedFlag.length - blockedTasks.length,\n        tagCategories: Object.keys(tasksByTags).length\n      }\n    }\n  }\n];"
+      },
+      "id": "6edf1425-17d5-4b39-ab7d-f528747d8863",
+      "name": "Analyze Dependencies and Cluster by Tags",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Given this detailed task list with dependency analysis and tag clustering, analyze urgency and strategic value based on Priority, Status, Dependencies, and Tags. Recommend an optimal order of execution, flag blocked tasks, surface strategic tasks for management attention, and output in readable list format.\n\nTask Data:\n{{ $json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cdf29cd5-537f-46fd-88a0-d06eca45e436",
+      "name": "Gemini Task Prioritization",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Task List Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task List Input": {
+      "main": [
+        [
+          {
+            "node": "Analyze Dependencies and Cluster by Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Dependencies and Cluster by Tags": {
+      "main": [
+        [
+          {
+            "node": "Gemini Task Prioritization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "408cfc85-f628-433f-b45d-ce6b77cd331a",
+  "meta": {
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "5ixAiFce5ZuIh29N",
+  "tags": []
+}

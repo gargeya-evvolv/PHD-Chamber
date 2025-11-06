@@ -1,0 +1,129 @@
+{
+  "name": "Deep Feedback Thematic and Sentiment Analyzer with AI Insight",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1b368432-8554-4fa5-b513-5830703fb6ac",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "feedbackArray",
+              "value": "[{\"User\":\"Alice\",\"Topic\":\"Support\",\"Feedback\":\"Very satisfied with the service.\"},{\"User\":\"Bob\",\"Topic\":\"Product\",\"Feedback\":\"Quality could be better.\"},{\"User\":\"Chloe\",\"Topic\":\"Delivery\",\"Feedback\":\"Fast but packaging was poor.\"},{\"User\":\"Derek\",\"Topic\":\"Support\",\"Feedback\":\"Average experience overall.\"}]",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "448c389c-be2e-4886-9bdb-99e1849f9966",
+      "name": "Feedback Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cluster feedback by Topic and identify repeat submitters\nconst items = $input.all();\n\n// Initialize data structures\nconst topicClusters = {};\nconst userSubmissionCount = {};\n\n// Process each feedback item\nfor (const item of items) {\n  const topic = item.json.Topic || 'Uncategorized';\n  const user = item.json.User || 'Anonymous';\n  \n  // Cluster by topic\n  if (!topicClusters[topic]) {\n    topicClusters[topic] = [];\n  }\n  topicClusters[topic].push(item.json);\n  \n  // Count submissions per user\n  if (!userSubmissionCount[user]) {\n    userSubmissionCount[user] = 0;\n  }\n  userSubmissionCount[user]++;\n}\n\n// Identify repeat submitters (users with more than 1 submission)\nconst repeatSubmitters = Object.entries(userSubmissionCount)\n  .filter(([user, count]) => count > 1)\n  .map(([user, count]) => ({ user, submissionCount: count }))\n  .sort((a, b) => b.submissionCount - a.submissionCount);\n\n// Prepare structured output\nconst output = {\n  clusteredFeedback: topicClusters,\n  topicSummary: Object.entries(topicClusters).map(([topic, items]) => ({\n    topic,\n    count: items.length\n  })),\n  repeatSubmitters,\n  totalFeedbackItems: items.length,\n  uniqueUsers: Object.keys(userSubmissionCount).length,\n  totalTopics: Object.keys(topicClusters).length\n};\n\nreturn [{ json: output }];"
+      },
+      "id": "98c23d12-9197-4935-a4c1-ebab778ba299",
+      "name": "Cluster & Analyze Feedback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "mode": "list",
+          "value": "",
+          "__rl": true
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyze the following feedback data grouped by Topic. For each feedback item, label the sentiment as Positive, Neutral, or Negative. Then synthesize key improvement themes across all topics. Highlight any repeat submitters and identify topics with the most negative sentiment. Provide: 1) Sentiment summary by topic, 2) Thematic insights (main issues and strengths), 3) Actionable improvement advice (one line per topic), 4) List of repeat submitters and problem areas. Here is the data: {{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2e6c0038-73d1-44f9-8cc4-22e33fe06a79",
+      "name": "Gemini Sentiment Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Feedback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Data": {
+      "main": [
+        [
+          {
+            "node": "Cluster & Analyze Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cluster & Analyze Feedback": {
+      "main": [
+        [
+          {
+            "node": "Gemini Sentiment Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "70272070-c3a0-44eb-a36c-872afee7f662",
+  "meta": {
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "IcjwzGqlrVQLL6TC",
+  "tags": []
+}

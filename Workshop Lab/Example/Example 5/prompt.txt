@@ -1,0 +1,11 @@
+Proactive Business Alerts for RFPs & Keyword Matching
+
+Pain Point Covered: Alert for keyword RFPs, purchase trends, automation, daily work validation
+
+Workflow:
+
+Trigger: New email/RFP uploaded to Gmail/Google Drive.
+
+Gemini: Scan for specific keywords (e.g., “RFP”, “credit”, “enquiry”, “validation”).
+
+Google Sheets: Log matching items and send instant alert (email/Slack/WhatsApp).

@@ -1,0 +1,5 @@
+Trigger: New file added to Google Drive (compliance document, contract, etc.)
+
+Gemini: Summarize the document and highlight compliance gaps based on a checklist.
+
+Google Sheets: Log summarized findings and send an email notification with a summary to relevant stakeholders.

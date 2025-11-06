@@ -1,0 +1,120 @@
+{
+  "name": "Smart Email Thread Analyzer with AI Action Suggestions",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "dd7346dd-d050-4ee8-a2b7-dd929bedf3bb",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        272,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Group emails by ThreadId and analyze threads\nconst items = $input.all();\n\n// Group emails by ThreadId\nconst threadMap = new Map();\n\nfor (const item of items) {\n  const threadId = item.json.ThreadId;\n  \n  if (!threadMap.has(threadId)) {\n    threadMap.set(threadId, []);\n  }\n  \n  threadMap.get(threadId).push(item.json);\n}\n\n// Analyze each thread\nconst threadSummaries = [];\n\nfor (const [threadId, messages] of threadMap.entries()) {\n  // Sort messages by timestamp or index (assuming they're in order)\n  const sortedMessages = messages.sort((a, b) => {\n    // If there's a timestamp field, use it; otherwise maintain order\n    if (a.Timestamp && b.Timestamp) {\n      return new Date(a.Timestamp) - new Date(b.Timestamp);\n    }\n    return 0;\n  });\n  \n  const messageCount = sortedMessages.length;\n  const lastMessage = sortedMessages[sortedMessages.length - 1];\n  const lastSender = lastMessage.Sender || lastMessage.From || 'Unknown';\n  \n  // Detect if thread has multiple consecutive messages from same sender\n  let isOverdue = false;\n  let consecutiveCount = 1;\n  \n  for (let i = 1; i < sortedMessages.length; i++) {\n    const currentSender = sortedMessages[i].Sender || sortedMessages[i].From;\n    const previousSender = sortedMessages[i - 1].Sender || sortedMessages[i - 1].From;\n    \n    if (currentSender === previousSender) {\n      consecutiveCount++;\n      if (consecutiveCount >= 2) {\n        isOverdue = true;\n      }\n    } else {\n      consecutiveCount = 1;\n    }\n  }\n  \n  threadSummaries.push({\n    threadId: threadId,\n    messageCount: messageCount,\n    lastSender: lastSender,\n    messages: sortedMessages,\n    isOverdue: isOverdue\n  });\n}\n\n// Return thread summaries\nreturn threadSummaries.map(summary => ({ json: summary }));"
+      },
+      "id": "70e6aba6-6851-4ed1-8049-1c3582e9a717",
+      "name": "Analyze Email Threads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Review these email threads, identify which require urgent reply, generate suggested follow-up templates for each, and highlight long-unanswered client emails. Return thread summary and action items for my team.\n\nThread Data:\n{{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7af2830-6491-4e77-b9c4-640e2903264d",
+      "name": "AI Action Suggestions",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        944,
+        64
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json: {Sender: 'client@biz.com', Subject: 'Project Kickoff', Body: 'Let\\'s schedule a call.', ThreadId: 'A'}}, {json: {Sender: 'client@biz.com', Subject: 'RE: Project Kickoff', Body: 'Could you send over the agenda?', ThreadId: 'A'}}, {json: {Sender: 'hr@company.com', Subject: 'Welcome', Body: 'Here are your onboarding steps.', ThreadId: 'B'}}];"
+      },
+      "id": "9a65b5c9-e061-4cce-bc6c-467940ff08d5",
+      "name": "Email Thread Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        64
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Email Thread Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Thread Data": {
+      "main": [
+        [
+          {
+            "node": "Analyze Email Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Email Threads": {
+      "main": [
+        [
+          {
+            "node": "AI Action Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3c9bb26f-0c37-4d57-976e-8e21b4fadb5f",
+  "meta": {
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "3eu5zbhWL2QyV7vv",
+  "tags": []
+}

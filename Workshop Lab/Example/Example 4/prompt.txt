@@ -1,0 +1,7 @@
+Trigger: New candidate/training entry in Google Sheets.
+
+Gemini: Generate onboarding checklist, summarize feedback forms post-training.
+
+Google Calendar/Docs: Schedule interviews/trainings, auto-generate completion certificates/reports.
+
+Google Drive: Store feedback summaries for performance review.

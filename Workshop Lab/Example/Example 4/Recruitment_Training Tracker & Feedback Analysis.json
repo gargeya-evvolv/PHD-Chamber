@@ -1,0 +1,363 @@
+{
+  "name": "Recruitment/Training Tracker & Feedback Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<__PLACEHOLDER_VALUE__Sheet name for candidate/training entries__>"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "fc440242-fdf7-4815-af67-860a695fba94",
+      "name": "New Candidate/Training Entry",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "feedbackFormsFolderId",
+              "value": "<__PLACEHOLDER_VALUE__Google Drive folder ID for feedback forms__>",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "certificatesFolderId",
+              "value": "<__PLACEHOLDER_VALUE__Google Drive folder ID for certificates__>",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "performanceReviewFolderId",
+              "value": "<__PLACEHOLDER_VALUE__Google Drive folder ID for performance reviews__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "430cea66-1612-4ce5-8300-44cd520989a7",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -576,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $('Workflow Configuration').item.json.entryType }}",
+              "rightValue": "onboarding",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "79d95b00-5a92-4ee3-a3c6-fc9f2a41618c",
+      "name": "Check Entry Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Candidate Name: {{ $json.candidateName }}, Email: {{ $json.email }}, Position: {{ $json.position }}, Start Date: {{ $json.startDate }}",
+        "options": {
+          "systemMessage": "You are an onboarding automation assistant. Your task is to:\n\n1. Generate a comprehensive onboarding checklist for the new candidate\n2. Schedule an interview using Google Calendar Tool (create event with appropriate title, date, and attendees)\n3. Create an onboarding document using Google Docs Tool with the checklist and important information\n4. Store the document in Google Drive using Google Drive Tool\n\nProvide a summary of all actions taken including document IDs and calendar event details."
+        }
+      },
+      "id": "ff685699-22c7-447a-8e09-9b3bff32dae3",
+      "name": "Onboarding Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        160,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Training Session: {{ $json.trainingName }}, Participant: {{ $json.participantName }}, Email: {{ $json.participantEmail }}, Date: {{ $json.trainingDate }}, Feedback Forms: {{ $json.feedbackForms }}",
+        "options": {
+          "systemMessage": "You are a training management assistant. Your task is to:\n\n1. Summarize all feedback forms provided in the input data\n2. Schedule the training session using Google Calendar Tool (create event with training details)\n3. Generate a completion certificate using Google Docs Tool with participant name, training name, and date\n4. Create a performance review report using Google Docs Tool summarizing the feedback\n5. Store both the certificate and feedback summary in Google Drive using Google Drive Tool in the appropriate folders\n\nProvide a summary of all actions taken including document IDs, calendar event details, and key insights from feedback."
+        }
+      },
+      "id": "19aca30b-c4ef-4310-af32-d7127f9e53b3",
+      "name": "Training Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -144,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "gemini-1.5-pro",
+        "options": {}
+      },
+      "id": "b0c52ff1-e354-4be1-bc9a-4483569396e7",
+      "name": "Gemini Model - Onboarding",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        128,
+        672
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "gemini-1.5-pro",
+        "options": {}
+      },
+      "id": "882e2bc0-a01c-4e8e-bd46-6443c148da25",
+      "name": "Gemini Model - Training",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        672
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $fromAI('calendar', 'Calendar ID or name', 'string', 'primary') }}"
+        },
+        "start": "={{ $fromAI('start', 'Event start date/time', 'string') }}",
+        "end": "={{ $fromAI('end', 'Event end date/time', 'string') }}",
+        "additionalFields": {
+          "summary": "={{ $fromAI('summary', 'Event title/summary', 'string') }}"
+        }
+      },
+      "id": "25ffdf79-fed5-4e27-b4d0-944be3dec642",
+      "name": "Google Calendar Tool",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        272,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "title": "={{ $fromAI(\"title\", \"Document title\", \"string\") }}"
+      },
+      "id": "e4fea7c1-3d80-4b76-b8ec-4508402bce6b",
+      "name": "Google Docs Tool",
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        416,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $fromAI(\"fileName\", \"File name\", \"string\") }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $fromAI(\"folderId\", \"Folder ID where file should be stored\", \"string\") }}"
+        },
+        "options": {}
+      },
+      "id": "40075387-36f4-4bcf-9857-af4417cd025f",
+      "name": "Google Drive Tool",
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        560,
+        672
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Candidate/Training Entry": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Check Entry Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Entry Type": {
+      "main": [
+        [
+          {
+            "node": "Onboarding Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Training Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model - Onboarding": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Onboarding Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model - Training": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Training Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Onboarding Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Training Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Docs Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Onboarding Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Training Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Onboarding Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Training Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "aefd2665-d318-4e45-ac8c-94fa5bc5d054",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "WLIIYhZGk4FyTQe7",
+  "tags": []
+}

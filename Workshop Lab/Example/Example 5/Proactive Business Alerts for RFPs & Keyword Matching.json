@@ -1,0 +1,515 @@
+{
+  "name": "Proactive Business Alerts for RFPs & Keyword Matching",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "keywords",
+              "value": "RFP, credit, enquiry, validation, purchase, automation, tender, proposal",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "alertEmail",
+              "value": "<__PLACEHOLDER_VALUE__Alert recipient email address__>",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "slackChannel",
+              "value": "<__PLACEHOLDER_VALUE__Slack channel ID or name__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5dcb6d07-eec7-4d11-be79-d4c2372ea215",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "70bec2fd-b491-4826-b70b-f3dbe3378fe7",
+      "name": "New Gmail Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__Google Drive folder ID to monitor__>"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "6f0ff84a-df6d-4dc3-8fa9-bd5dc0e3d722",
+      "name": "New Google Drive File",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ffd827e6-f317-4ba3-8d93-e2df597d512e",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "contentToAnalyze",
+              "value": "={{ $json.snippet || $json.plainText || $json.name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "sourceType",
+              "value": "={{ $json.messageId ? 'Gmail' : 'Google Drive' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "sourceLink",
+              "value": "={{ $json.messageId ? 'https://mail.google.com/mail/u/0/#inbox/' + $json.messageId : $json.webViewLink || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "sourceName",
+              "value": "={{ $json.subject || $json.name || 'Unknown' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "21f85be6-1c80-4935-9e23-47cc582573c6",
+      "name": "Prepare Content for Analysis",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gemini-2.0-flash-exp"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyze the following content and determine if it contains any of these keywords: {{ $('Workflow Configuration').first().json.keywords }}\n\nContent to analyze:\n{{ $json.contentToAnalyze }}\n\nSource: {{ $json.sourceName }}\n\nRespond with a JSON object containing:\n- found: true/false (whether any keywords were found)\n- matchedKeywords: array of matched keywords\n- relevanceScore: 1-10 (how relevant this is to RFPs/business opportunities)\n- summary: brief summary of why this matches\n\nOnly respond with valid JSON, nothing else."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "id": "ea667cf4-96a1-427c-9b98-43ad9b8efa78",
+      "name": "Gemini Keyword Scanner",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        896,
+        96
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "\"found\":\\s*true",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b8b7f619-ae64-48b0-b226-940f0f1afc3d",
+      "name": "Keywords Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "alertTitle",
+              "value": "=🚨 Keyword Match: {{ $('Prepare Content for Analysis').first().json.sourceName }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "alertMessage",
+              "value": "=New {{ $('Prepare Content for Analysis').first().json.sourceType }} item detected with matching keywords!\n\nSource: {{ $('Prepare Content for Analysis').first().json.sourceName }}\nLink: {{ $('Prepare Content for Analysis').first().json.sourceLink }}\n\nAI Analysis:\n{{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "f325ed1d-fbae-4f79-abe8-0ef81eb5fb47",
+      "name": "Format Alert Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__Google Sheets document ID__>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "RFP Alerts"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "Timestamp": "={{ $json.Timestamp }}",
+            "Source Type": "={{ $json['Source Type'] }}",
+            "Source Name": "={{ $json['Source Name'] }}",
+            "Source Link": "={{ $json['Source Link'] }}",
+            "AI Analysis": "={{ $json['AI Analysis'] }}",
+            "Matched Keywords": "={{ $json['Matched Keywords'] }}"
+          },
+          "matchingColumns": [
+            "Timestamp"
+          ],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source Type",
+              "displayName": "Source Type",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source Name",
+              "displayName": "Source Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source Link",
+              "displayName": "Source Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Analysis",
+              "displayName": "AI Analysis",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Matched Keywords",
+              "displayName": "Matched Keywords",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e789ee56-25da-4f45-940a-1b7793596725",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1696,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zEo3PrKTEneREkGi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Workflow Configuration').first().json.alertEmail }}",
+        "subject": "={{ $json.alertTitle }}",
+        "emailType": "text",
+        "message": "={{ $json.alertMessage }}",
+        "options": {}
+      },
+      "id": "f1bcde86-515b-4f69-a406-8c26f08e2997",
+      "name": "Send Email Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1920,
+        96
+      ],
+      "webhookId": "78bb4e14-916b-4958-9d08-952ea6ebb808",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.slackChannel }}"
+        },
+        "text": "={{ $json.alertMessage }}",
+        "otherOptions": {
+          "sendAsUser": "={{ $('Workflow Configuration').first().json.slackUser }}"
+        }
+      },
+      "id": "6fb345e8-0bc0-442d-b6d3-59abc374a9dd",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2144,
+        96
+      ],
+      "webhookId": "bcc59512-b213-49bd-bbfe-3cd9d83bb53e"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Gmail Email": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Google Drive File": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Prepare Content for Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Content for Analysis": {
+      "main": [
+        [
+          {
+            "node": "Gemini Keyword Scanner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Keyword Scanner": {
+      "main": [
+        [
+          {
+            "node": "Keywords Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keywords Found?": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Email Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "53ff4ce2-36e8-4109-a141-9aaa5db43496",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "JeP2IF4FO42WQlvc",
+  "tags": []
+}

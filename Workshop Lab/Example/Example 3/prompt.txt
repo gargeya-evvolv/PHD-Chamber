@@ -1,0 +1,3 @@
+Trigger: New update (order, logistics, pricing, claim) received via email/Gmail/Sheets.
+Gemini: Summarize latest updates for each customer/distributor.
+Google Sheets: Update dashboard for tracking, auto-generate status reports.

@@ -1,0 +1,276 @@
+{
+  "name": "Smart Auto-Reply for Routine Gmail Inquiries with Logging",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ],
+          "q": "is:unread (petty OR routine OR simple OR quick OR basic)",
+          "readStatus": "unread"
+        }
+      },
+      "id": "a9156057-3f58-4547-9aa8-ef3253911174",
+      "name": "Incoming Routine Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -96,
+        -176
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "routineKeywords",
+              "value": "petty, routine, simple, quick, basic",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "replyTone",
+              "value": "professional and helpful",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a8a88c09-6843-43ec-bece-74c6be493dc3",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        128,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gemini-1.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.snippet }}\n\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}"
+            }
+          ]
+        },
+        "options": {
+          "systemMessage": "=You are an intelligent email assistant that generates professional auto-replies for routine inquiries.\n\nYour task is to:\n1. Analyze the email content, sender, and subject\n2. Determine the appropriate response based on the context\n3. Generate a concise, helpful, and professional reply\n4. Keep the tone {{ $json.replyTone }}\n5. Acknowledge the inquiry and provide a brief response or next steps\n\nReturn ONLY the email reply text without any additional formatting or explanations."
+        }
+      },
+      "id": "6a1b751f-8656-4bbf-9656-5f5a26604e70",
+      "name": "Generate Smart Reply",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        352,
+        -176
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $('Incoming Routine Email').item.json.id }}",
+        "message": "={{ $json.response }}",
+        "options": {}
+      },
+      "id": "6c9b8b9c-899d-43bd-b107-3b89947d378d",
+      "name": "Send Auto-Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        -176
+      ],
+      "webhookId": "bb4cd372-1bb8-4eec-8ba5-195045565017",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__Google Sheets Document ID__>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "<__PLACEHOLDER_VALUE__Sheet Name (e.g., Email Log)__>"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email ID": "={{ $('Incoming Routine Email').item.json.id }}",
+            "From": "={{ $('Incoming Routine Email').item.json.from }}",
+            "Subject": "={{ $('Incoming Routine Email').item.json.subject }}",
+            "Received Date": "={{ $('Incoming Routine Email').item.json.date }}",
+            "Reply Sent": "={{ $json.response }}",
+            "Status": "Auto-Replied",
+            "Timestamp": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "Email ID"
+          ],
+          "schema": [
+            {
+              "id": "Email ID",
+              "displayName": "Email ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "From",
+              "displayName": "From",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Received Date",
+              "displayName": "Received Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reply Sent",
+              "displayName": "Reply Sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8463eb61-e9cb-4803-814d-8528a5a17a33",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        -176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zEo3PrKTEneREkGi",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Incoming Routine Email": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Generate Smart Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Smart Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Auto-Reply": {
+      "main": [
+        [
+          {
+            "node": "Log Interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e4b8a041-e550-4264-87a1-d0f8bfd1ed5c",
+  "meta": {
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "isWdKy3tF6oJ9CL0",
+  "tags": []
+}

@@ -1,0 +1,301 @@
+{
+  "name": "Automated Compliance Document Review and Stakeholder Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "mode": "id",
+          "value": "root"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "id": "aba3949a-c6f9-447e-b5db-00530567ef38",
+      "name": "New Compliance Document",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "complianceChecklist",
+              "value": "<__PLACEHOLDER_VALUE__Compliance checklist items to check (e.g., data privacy, security standards, regulatory requirements)__>",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "stakeholderEmails",
+              "value": "<__PLACEHOLDER_VALUE__Comma-separated email addresses of stakeholders__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "66e46c55-df3b-4608-b9a2-c73a4d7bb3db",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "7b99f3ee-624a-49ac-8c32-a60f1aa2db2e",
+      "name": "Extract Document Content",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "prompt": "=You are a compliance analyst reviewing documents for regulatory adherence.\n\nYour task is to:\n1. Summarize the key points of the document\n2. Identify any compliance gaps based on the following checklist: {{ $json.complianceChecklist }}\n3. Highlight specific sections or clauses that need attention\n4. Provide recommendations for addressing identified gaps\n\nReturn your analysis in the following JSON format:\n{\n  \"summary\": \"Brief summary of the document\",\n  \"complianceGaps\": [\"List of identified gaps\"],\n  \"recommendations\": [\"List of recommendations\"],\n  \"riskLevel\": \"Low/Medium/High\"\n}\n\n\"{text}\""
+            }
+          }
+        }
+      },
+      "id": "847233b4-931e-4af6-b3ba-851e45f66cf1",
+      "name": "Summarize and Analyze Compliance",
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "0098cd32-f5bb-434d-ba68-af60a4e80734",
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        744,
+        224
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<__PLACEHOLDER_VALUE__Google Sheets document ID__>"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "<__PLACEHOLDER_VALUE__Sheet name (e.g., Compliance Log)__>"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Document Name": "={{ $('New Compliance Document').item.json.name }}",
+            "Date Reviewed": "={{ $now.toISO() }}",
+            "Summary": "={{ $json.output }}",
+            "Risk Level": "={{ $json.riskLevel || 'N/A' }}"
+          },
+          "matchingColumns": [
+            "Document Name"
+          ],
+          "schema": [
+            {
+              "id": "Document Name",
+              "displayName": "Document Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Date Reviewed",
+              "displayName": "Date Reviewed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "42dd92d7-5401-4d9b-ba33-de9b441e50d2",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zEo3PrKTEneREkGi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Workflow Configuration').first().json.stakeholderEmails }}",
+        "subject": "=Compliance Review: {{ $('New Compliance Document').item.json.name }}",
+        "message": "=Hello,\n\nA new compliance document has been reviewed:\n\n**Document:** {{ $('New Compliance Document').item.json.name }}\n**Date:** {{ $now.toFormat(\"yyyy-MM-dd HH:mm\") }}\n\n**Summary:**\n{{ $('Summarize and Analyze Compliance').item.json.output }}\n\nPlease review the detailed findings in the compliance log.\n\nBest regards,\nAutomated Compliance System",
+        "options": {}
+      },
+      "id": "decc05f3-ec57-4c12-a3ce-63f0cf7bc5e0",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        0
+      ],
+      "webhookId": "137d1074-ebaf-4bd7-8e47-12fb651e9edc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Compliance Document": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Extract Document Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Document Content": {
+      "main": [
+        [
+          {
+            "node": "Summarize and Analyze Compliance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize and Analyze Compliance",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize and Analyze Compliance": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9749f798-1396-406b-bfe5-d01502633f00",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "kx5rHoBjM0Dtk9oN",
+  "tags": []
+}

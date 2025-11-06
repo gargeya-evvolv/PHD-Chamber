@@ -1,0 +1,336 @@
+{
+  "name": "Customer Communication & Order Tracking Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 5,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "filters": {
+          "q": "subject:(order OR logistics OR pricing OR claim OR claims OR shipment OR delivery OR invoice)",
+          "readStatus": "unread"
+        }
+      },
+      "id": "d37991c6-ee6a-42ba-be42-82142be15a95",
+      "name": "New Email Update Received",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "i7QKEQbeYv5Q9mwQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "dashboardSheetId",
+              "value": "<__PLACEHOLDER_VALUE__Google Sheets Dashboard ID__>",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "statusReportSheetId",
+              "value": "<__PLACEHOLDER_VALUE__Google Sheets Status Report ID__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "95b4419b-1c16-4fdc-995e-208e792fd1b6",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "emailSubject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "emailFrom",
+              "value": "={{ $json.from }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "emailBody",
+              "value": "={{ $json.textPlain || $json.textHtml }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "receivedDate",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "updateType",
+              "value": "<__PLACEHOLDER_VALUE__Update Type (e.g., 'Feature Request', 'Bug Report', 'General Feedback')__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "c57e942a-47d2-4a36-a1ea-62ff6439db9d",
+      "name": "Extract Email Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-1.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Summarize the following customer/distributor update email. Extract key information including: customer/distributor name, update type (order/logistics/pricing/claim), status, important details, and action items. Format as a concise summary.\n\nEmail Subject: {{ $json.emailSubject }}\nFrom: {{ $json.emailFrom }}\nBody: {{ $json.emailBody }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "59609504-74e8-4f18-b0b2-795955a2abc3",
+      "name": "Summarize Updates with Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "eTd2CfgPvrLW0lCa",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.dashboardSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "<__PLACEHOLDER_VALUE__Dashboard Sheet Name__>"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "fdfbe536-ca0a-42b5-b4d6-1f81caf90c39",
+      "name": "Update Dashboard Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zEo3PrKTEneREkGi",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "reportDate",
+              "value": "={{ $now.toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "reportSummary",
+              "value": "={{ $json.response }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "customerName",
+              "value": "<__PLACEHOLDER_VALUE__Customer Name from Summary__>",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "status",
+              "value": "<__PLACEHOLDER_VALUE__Status from Summary__>",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "fafbc4f5-1fca-45e8-bed7-edb309ddb170",
+      "name": "Prepare Status Report Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1248,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.statusReportSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<__PLACEHOLDER_VALUE__Status Report Sheet Name__>"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": null
+        },
+        "options": {}
+      },
+      "id": "bbd0c9f2-cbd0-4b27-ad2f-02e97f3cc0ba",
+      "name": "Generate Status Report",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zEo3PrKTEneREkGi",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Email Update Received": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Data": {
+      "main": [
+        [
+          {
+            "node": "Summarize Updates with Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Updates with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Update Dashboard Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Dashboard Sheet": {
+      "main": [
+        [
+          {
+            "node": "Prepare Status Report Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Status Report Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Status Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c842bcc9-13bd-4ae5-aa1c-c78f5aa20fd0",
+  "meta": {
+    "instanceId": "2de25c30739c9cd8c73647dce0e834cd05c098445b8ebd0b0fb3c152ed11cfc2"
+  },
+  "id": "mPCzfyOxKowtq0D0",
+  "tags": []
+}

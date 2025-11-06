@@ -1,0 +1,5 @@
+Trigger: Incoming email in Gmail matching “petty”/routine keywords.
+
+Gemini: Generate a smart auto-response based on previous replies and context.
+
+Google Sheets: Log the interaction and update status, if needed.
