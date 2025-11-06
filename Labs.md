@@ -67,7 +67,7 @@
 
 1. **Manual Trigger**
 
-2. **Set Node** – Paste the following vertical-style JSON array:
+2. **Code Node** – Paste the following vertical-style JSON array:
     ```
     [
       {
